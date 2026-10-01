@@ -62,8 +62,32 @@ function setState(st) {
   S = st;
   skew = st.t.now - Date.now();
   if (prevLevel != null && S.level > prevLevel) {
-    toast(`<b class="x">Level ${S.level}!</b> Meters refilled and skill points to spend in Profile.`, 'lvl');
+    Art.banner(`Level ${S.level}`, 'Meters refilled. Spend your skill points in Profile.', 'lvl');
   }
+}
+
+// Show what an action changed: floating numbers at the button, a shake on losses.
+let lastBtn = null;
+function playEffects(before, res, btn) {
+  if (!S || !before) return;
+  const rect = btn && document.body.contains(btn) ? btn.getBoundingClientRect() : null;
+  const x = rect ? rect.left + rect.width / 2 : innerWidth / 2;
+  const y = rect ? rect.top : innerHeight / 2;
+  const floats = [];
+  const dCash = S.cash - before.cash, dBank = S.bank - before.bank, dHp = S.hp - before.hp;
+  const dXp = S.level === before.level ? S.xp - before.xp : 0;
+  if (dCash && !(dBank && Math.abs(dCash) >= Math.abs(dBank))) floats.push([(dCash > 0 ? '+' : '−') + usd(Math.abs(dCash)), dCash > 0 ? 'f-cash' : 'f-loss']);
+  if (dBank > 0) floats.push(['+' + usd(dBank) + ' banked', 'f-cash']);
+  if (dXp > 0) floats.push(['+' + dXp + ' XP', 'f-xp']);
+  if (dHp < 0) floats.push(['−' + Math.abs(dHp) + ' HP', 'f-loss']);
+  const dealt = res && res.msg && /^You hit .+? for ([\d,]+)\./.exec(res.msg);
+  if (dealt) floats.unshift(['−' + dealt[1], 'f-hit']);
+  floats.forEach(([t, c], i) => Art.floatText(x, y, t, c, i * 140));
+  if (res && res.kind === 'loss') { Art.shake($('#main')); Art.shake($('#hud')); }
+  if (dealt) Art.shake(btn && btn.closest('.boss') && btn.closest('.boss').querySelector('.hero-portrait'));
+  const fell = res && res.msg && /has fallen!/.test(res.msg);
+  if (fell) Art.banner(res.msg.match(/ ([^.!]+) has fallen!/)?.[1] + ' has fallen!', 'The bounty is split among everyone who fought.', 'hero');
+  else if (res && res.kind === 'win' && rect && !(S.level > before.level)) Art.burst(x, y, ['#5ee0a0', '#ff8a1f', '#ffd23f'], 18);
 }
 
 function indexCatalog(c) {
@@ -122,10 +146,13 @@ async function call(fn, args = {}, after) {
   if (busy) return;
   busy = true;
   document.body.classList.add('busy');
+  const btn = lastBtn;
+  const before = S && { cash: S.cash, bank: S.bank, xp: S.xp, level: S.level, hp: cur('hp') };
   try {
     const res = await rpc(fn, { p_token: token, ...args });
     if (res && res.state) setState(res.state);
     if (res && res.msg) toast(esc(res.msg), res.kind || '');
+    playEffects(before, res, btn);
     if (after) await after(res);
   } catch (e) {
     if (e.code === '28000') return signOut(e.message);
@@ -176,13 +203,14 @@ const act = {
   tab(t) {
     ui.tab = t; ui.bountyFor = null; ui.retire = false;
     renderAll();
+    enterAnimation();
     if (t === 'fights') refreshTargets();
     if (t === 'heroes' || t === 'underworld') refreshWorld();
   },
-  district(id) { ui.district = id; renderMain(); },
+  district(id) { ui.district = id; renderMain(); enterAnimation(); },
   armory(t) { ui.armory = t; renderMain(); },
   authMode(m) { ui.auth = m; renderAuth(''); },
-  arch(k) { ui.archPick = k; document.querySelectorAll('.arch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.arg === k))); },
+  arch(k) { ui.archPick = k; document.querySelectorAll('.arch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.arg === k))); updatePreview(); },
 
   scheme(id) { call('vs_scheme', { p_scheme: id }); },
   goon(id) {
@@ -249,7 +277,7 @@ function renderAuth(message) {
   const create = ui.auth === 'create';
   $('#app').innerHTML = `
   <main class="intro">
-    <h1>Villain<span>Syndicate</span></h1>
+    <div class="scene-banner hero-scene">${Art.sceneTag('keyart')}<h1>Villain<span>Syndicate</span></h1></div>
     <p class="lede">The city is soft and its heroes are tired. Run schemes, rob rival villains, team up to take down heroes and build a lair that pays while you sleep. Every villain here is another player.</p>
     <div class="auth-tabs">
       <button class="chip" data-act="authMode" data-arg="create" aria-pressed="${create}">New villain</button>
@@ -265,17 +293,22 @@ function renderAuth(message) {
         <input class="text-in" id="password" name="password" type="password" required minlength="6" autocomplete="${create ? 'new-password' : 'current-password'}">
       </div>
       ${create ? `
-      <div class="field">
-        <label class="label" for="vname">Villain name, shown to other players</label>
-        <input class="text-in" id="vname" name="vname" required minlength="2" maxlength="24" placeholder="Doctor Nobody" autocomplete="off">
+      <div class="preview-row">
+        <div id="preview">${Art.portraitTag('Doctor Nobody', { size: 112, arch: ui.archPick, cls: 'preview-portrait' })}</div>
+        <div class="field" style="flex:1;min-width:0">
+          <label class="label" for="vname">Villain name, shown to other players</label>
+          <input class="text-in" id="vname" name="vname" required minlength="2" maxlength="24" placeholder="Doctor Nobody" autocomplete="off">
+          <small class="vsub">Your face is drawn from your name and style. Try a few.</small>
+        </div>
       </div>
       <div class="field">
         <span class="label">Choose your style</span>
         <div class="archs">
           ${CAT.archList.map(a => `
             <button type="button" class="arch" data-act="arch" data-arg="${a.id}" aria-pressed="${a.id === ui.archPick}">
-              <b>${esc(a.name)}</b><small>${esc(a.blurb)}</small>
-              <small class="num">EN ${a.en} · ST ${a.st} · HP ${a.hp} · ATK ${a.atk} · DEF ${a.def}</small>
+              <img class="arch-img" src="img/arch-${a.id}.webp" alt="" loading="lazy">
+              <span class="arch-text"><b>${esc(a.name)}</b><small>${esc(a.blurb)}</small>
+              <small class="num">EN ${a.en} · ST ${a.st} · HP ${a.hp} · ATK ${a.atk} · DEF ${a.def}</small></span>
             </button>`).join('')}
         </div>
       </div>` : ''}
@@ -283,6 +316,14 @@ function renderAuth(message) {
       <button class="btn big" type="submit">${create ? 'Begin your reign' : 'Sign in'}</button>
     </form>
   </main>`;
+  Art.paintPortraits($('#app'));
+  Art.runScenes();
+}
+function updatePreview() {
+  const box = $('#preview'); if (!box) return;
+  const name = ($('#vname')?.value || '').trim() || 'Doctor Nobody';
+  box.innerHTML = Art.portraitTag(name, { size: 112, arch: ui.archPick, cls: 'preview-portrait pop' });
+  Art.paintPortraits(box);
 }
 
 // ===================== Render: game =====================
@@ -295,11 +336,27 @@ function meter(label, key) {
     <div class="tm">${v >= max ? 'Full' : '+' + (key === 'hp' ? Math.max(1, Math.round(S.max_hp / 60)) : 1) + ' in ' + mmss(nextIn(key))}</div></div>`;
 }
 
+// Cash in the HUD counts toward its new value instead of jumping.
+let shownCash = null;
+function animateCash() {
+  if (shownCash === null || shownCash === S.cash) { shownCash = S.cash; return; }
+  const from = shownCash, to = S.cash;
+  shownCash = to;
+  const el = $('#hud .cash');
+  if (el) el.classList.add(to > from ? 'up' : 'down');
+  Art.tween(from, to, 700, (v, done) => {
+    const c = $('#hud .cash'); if (!c) return;
+    c.textContent = usd(Math.round(v));
+    if (done) c.classList.remove('up', 'down');
+  });
+}
+
 function renderHud() {
   const hud = $('#hud'); if (!hud) return;
+  const tweening = shownCash !== null && shownCash !== S.cash;
   hud.innerHTML = `<div class="hud-in">
     <div class="who">
-      <div class="crest" aria-hidden="true">${esc(S.name[0].toUpperCase())}</div>
+      ${Art.portraitTag(S.name, { size: 48, arch: S.arch, cls: 'crest-portrait' })}
       <div style="min-width:0">
         <div class="vname">${esc(S.name)}</div>
         <div class="vsub">Lv <span class="num">${S.level}</span> ${esc(CAT.archs[S.arch].name)} · crew of <span class="num">${S.crew}</span>${S.bounty > 0 ? ` · <span class="bounty-chip">${short(S.bounty)} bounty</span>` : ''}</div>
@@ -308,10 +365,12 @@ function renderHud() {
     </div>
     <div class="meters">${meter('Energy', 'en')}${meter('Stamina', 'st')}${meter('Health', 'hp')}</div>
     <div class="money">
-      <div class="cash" title="Cash on hand">${usd(S.cash)}</div>
+      <div class="cash" title="Cash on hand">${usd(tweening ? shownCash : S.cash)}</div>
       <div class="bank">Vault ${usd(S.bank)}</div>
     </div>
   </div>`;
+  Art.paintPortraits(hud);
+  if (tweening) animateCash(); else shownCash = S.cash;
 }
 
 const TABS = [
@@ -337,7 +396,8 @@ function viewSchemes() {
   const en = cur('en');
   const mult = S.arch === 'mastermind' ? 1.1 : 1;
   return `
-  <div class="row-head"><div><h2 class="h2">${esc(d.name)}</h2>
+  <div class="scene-banner">${Art.sceneTag(d.id)}<div class="scene-title"><span class="label">District · Lv ${d.lvl}+</span><h2 class="h2">${esc(d.name)}</h2></div></div>
+  <div class="row-head"><div>
     <p class="intro-line">Schemes cost energy and pay cash and XP. Run each one 10 times to master it. Master all four to take the district and claim its ${esc(CAT.items[d.reward].name)}.</p></div></div>
   <div class="chips">${CAT.districts.map(x => `<button class="chip" data-act="district" data-arg="${x.id}" aria-pressed="${x.id === d.id}" ${S.level < x.lvl ? 'disabled' : ''}>${esc(x.name)}${S.level < x.lvl ? ` · Lv ${x.lvl}` : S.districts.includes(x.id) ? ' ✓' : ''}</button>`).join('')}</div>
   <div class="mast ${owns ? 'done' : ''}">District control <div class="bar"><i style="width:${done / schemes.length * 100}%"></i></div> <span class="num">${done}/${schemes.length}</span></div>
@@ -377,7 +437,8 @@ function viewFights() {
           const reason = S.level < 3 ? 'Lv 3 to attack' : protectedT ? 'Newcomer' : down ? 'Recovering' : capped ? 'Hit limit' : fightLabel;
           const disabled = S.level < 3 || protectedT || down || capped || !canFight;
           const minBounty = 500 * t.level;
-          return `<div class="card">
+          return `<div class="card with-pic">
+            ${Art.portraitTag(t.name, { size: 52, arch: t.arch })}
             <div>
               <div class="title"><span class="${t.online ? 'online' : 'offline'}" title="${t.online ? 'Online now' : 'Offline'}"></span>${esc(t.name)} <span class="threat ${th[0]}">${th[1]}</span> ${t.bounty > 0 ? `<span class="bounty-chip">${short(t.bounty)} bounty</span>` : ''}</div>
               <div class="meta"><span>Lv <b class="num">${t.level}</b></span><span>${esc(CAT.archs[t.arch].name)}</span><span>Crew <b class="num">${t.crew}</b></span><span>Health <b class="num">${t.hp_now}/${t.max_hp}</b></span><span>Hits this hour <b class="num">${t.hits}/5</b></span></div>
@@ -413,7 +474,8 @@ function viewFights() {
   <div class="row-head"><h3 class="section-title">Street goons</h3><button class="btn ghost" data-act="scoutGoons">Scout new goons</button></div>
   <div class="list">${goons.map(g => {
     const th = { easy: ['easy', 'Easy mark'], even: ['even', 'Even match'], risky: ['risky', 'Risky'] }[g.diff];
-    return `<div class="card">
+    return `<div class="card with-pic">
+      ${Art.portraitTag(g.name, { size: 52 })}
       <div><div class="title">${esc(g.name)} <span class="threat ${th[0]}">${th[1]}</span></div>
       <div class="meta"><span>${esc(g.tag)}</span></div></div>
       <div class="acts"><button class="btn" data-act="goon" data-arg="${g.id}" ${canFight ? '' : 'disabled'}>${fightLabel}</button></div>
@@ -433,11 +495,11 @@ function viewHeroes() {
   </div>
   <div class="list">${CAT.heroes.map(H => {
     const h = live[H.id] || { hp: H.base_hp, max_hp: H.base_hp, defeats: 0, top: [], fighters: 0 };
-    if (S.level < H.lvl) return `<div class="boss locked"><div class="name">${esc(H.name)}</div><p class="quote">Fights villains of level ${H.lvl} and up.</p></div>`;
+    if (S.level < H.lvl) return `<div class="boss locked"><div class="boss-head"><img class="hero-portrait silhouette" src="img/hero-${H.id}.webp" alt="" loading="lazy"><div class="boss-id"><div class="name">${esc(H.name)}</div><p class="quote">Fights villains of level ${H.lvl} and up.</p></div></div></div>`;
     const scale = 1 + h.defeats * 0.25;
     return `<div class="boss">
-      <div class="row-head"><div class="name">${esc(H.name)}</div><span class="vsub">Defeated <span class="num">${h.defeats}</span>× · <span class="num">${h.fighters}</span> villain${h.fighters === 1 ? '' : 's'} fighting</span></div>
-      <p class="quote">${esc(H.quote)}</p>
+      <div class="boss-head"><img class="hero-portrait" src="img/hero-${H.id}.webp" alt="${esc(H.name)}" loading="lazy"><div class="boss-id"><div class="name">${esc(H.name)}</div><span class="vsub">Defeated <span class="num">${h.defeats}</span>× · <span class="num">${h.fighters}</span> villain${h.fighters === 1 ? '' : 's'} fighting</span>
+      <p class="quote">${esc(H.quote)}</p></div></div>
       <div class="hpbar"><i style="width:${h.hp / h.max_hp * 100}%"></i><span>${num(h.hp)} / ${num(h.max_hp)}</span></div>
       <div class="meta" style="display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:.92rem">
         <span>Shared bounty <b class="c num">${short(H.cash_min * scale)}+</b></span><span class="x">${num(H.xp * scale)} XP split</span><span>Drops ${esc(CAT.items[H.loot].name)}</span>
@@ -462,7 +524,7 @@ function viewArsenal() {
     const locked = it.price && S.level < it.lvl;
     return `<div class="card ${locked ? 'locked' : ''}">
       <div>
-        <div class="title">${esc(it.name)}${!it.price ? ' <span class="threat even">Loot</span>' : ''}</div>
+        <div class="title">${Art.itemIcon(it.type, !it.price)}${esc(it.name)}${!it.price ? ' <span class="threat even">Loot</span>' : ''}</div>
         <div class="meta"><span>ATK <b class="num">${it.atk}</b></span><span>DEF <b class="num">${it.def}</b></span><span>Owned <b class="num">${owned(it.id)}</b></span>${it.price ? `<span>${locked ? 'Unlocks at Lv ' + it.lvl : 'Price <b class="num">' + usd(it.price) + '</b>'}</span>` : ''}</div>
       </div>
       <div class="acts">${it.price ? `
@@ -553,7 +615,7 @@ function viewUnderworld() {
       <h3 class="section-title">Top villains</h3>
       <div class="table-wrap"><table class="board-table">
         <thead><tr><th class="num">#</th><th>Villain</th><th class="num">Lv</th><th class="num">Rivals beaten</th><th class="num">Heroes</th></tr></thead>
-        <tbody>${world.leaders.map((l, i) => `<tr class="${l.id === S.id ? 'me' : ''}"><td class="num">${i + 1}</td><td><span class="${l.online ? 'online' : 'offline'}"></span>${esc(l.name)}</td><td class="num">${l.level}</td><td class="num">${l.pvp_wins}</td><td class="num">${l.heroes}</td></tr>`).join('')}</tbody>
+        <tbody>${world.leaders.map((l, i) => `<tr class="${l.id === S.id ? 'me' : ''}"><td class="num">${i + 1}</td><td><span class="lb-name">${Art.portraitTag(l.name, { size: 26, arch: l.arch })}<span class="${l.online ? 'online' : 'offline'}"></span>${esc(l.name)}</span></td><td class="num">${l.level}</td><td class="num">${l.pvp_wins}</td><td class="num">${l.heroes}</td></tr>`).join('')}</tbody>
       </table></div>
     </section>
   </div>`;
@@ -568,8 +630,8 @@ function viewProfile() {
     ['max_hp', 'Max health', '+10 health', S.max_hp, 1],
   ];
   return `
-  <div class="row-head"><div><h2 class="h2">${esc(S.name)}</h2>
-  <p class="intro-line">Level ${S.level} ${esc(CAT.archs[S.arch].name)}, signed in as <b>${esc(S.username)}</b>. ${esc(CAT.archs[S.arch].blurb)} You get 5 skill points per level and 3 for each district you take.</p></div>
+  <div class="row-head"><div class="profile-id">${Art.portraitTag(S.name, { size: 96, arch: S.arch, cls: 'profile-portrait' })}<div><h2 class="h2">${esc(S.name)}</h2>
+  <p class="intro-line">Level ${S.level} ${esc(CAT.archs[S.arch].name)}, signed in as <b>${esc(S.username)}</b>. ${esc(CAT.archs[S.arch].blurb)} You get 5 skill points per level and 3 for each district you take.</p></div></div>
   <button class="btn ghost" data-act="signOut">Sign out</button></div>
   <div class="panel">
     <div class="row-head"><span class="label">Skill points</span><b class="num x" style="font-size:1.4rem">${S.sp}</b></div>
@@ -608,6 +670,15 @@ function renderMain() {
   const keep = a && el.contains(a) && a.tagName === 'INPUT' ? { id: a.id, value: a.value } : null;
   el.innerHTML = VIEWS[ui.tab]();
   if (keep && keep.id) { const inp = document.getElementById(keep.id); if (inp) { inp.value = keep.value; inp.focus(); } }
+  Art.paintPortraits(el);
+  Art.runScenes();
+}
+// Cards slide in only when you switch tabs, not on the once-a-second refresh.
+function enterAnimation() {
+  const el = $('#main'); if (!el) return;
+  el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
+  clearTimeout(enterAnimation.t);
+  enterAnimation.t = setTimeout(() => el.classList.remove('enter'), 900);
 }
 function renderLog() {
   const el = $('#log'); if (!el) return;
@@ -633,6 +704,8 @@ let loops = [];
 function enterGame() {
   scoutGoons();
   renderAll();
+  window.scrollTo(0, 0);
+  enterAnimation();
   refreshWorld();
   refreshTargets();
   loops.forEach(clearInterval);
@@ -658,13 +731,18 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
   if (!b || b.disabled) return;
   const fn = act[b.dataset.act];
-  if (fn) { e.preventDefault(); fn(b.dataset.arg); }
+  if (fn) { e.preventDefault(); lastBtn = b; fn(b.dataset.arg); }
 });
 document.addEventListener('submit', e => {
   const f = e.target.closest('form[data-form]');
   if (!f) return;
   e.preventDefault();
+  lastBtn = f.querySelector('button[type=submit]');
   forms[f.dataset.form](f);
+});
+let previewTimer = 0;
+document.addEventListener('input', e => {
+  if (e.target.id === 'vname') { clearTimeout(previewTimer); previewTimer = setTimeout(updatePreview, 180); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S) refreshState(); });
 

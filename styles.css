@@ -195,5 +195,87 @@ table.board-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
 @media (max-width: 520px) {
   .meters { gap: 8px; }
   .meter .top { letter-spacing: .04em; font-size: .7rem; }
-  .meter .val { font-size: .85rem; }
+  .meter .val { font-size: .78rem; }
+  .meter .top { gap: 4px; }
 }
+
+/* ---------- Art ---------- */
+.portrait { display: block; flex: none; border-radius: 50%; background: var(--panel-2); box-shadow: 0 0 0 2px var(--line); }
+.crest-portrait { box-shadow: 0 0 0 2px var(--plot); }
+.profile-portrait, .preview-portrait { box-shadow: 0 0 0 3px var(--plot), 0 8px 24px rgba(0,0,0,.4); }
+.profile-id { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.profile-id > div { min-width: 0; }
+.hero-portrait { border-radius: 12px; box-shadow: 0 0 0 3px var(--en), 0 6px 18px rgba(0,0,0,.45); }
+.hero-portrait.silhouette { filter: grayscale(1) brightness(.6) blur(1.5px); box-shadow: 0 0 0 2px var(--line); }
+.card.with-pic { grid-template-columns: auto minmax(0, 1fr) auto; }
+@media (max-width: 520px) {
+  .card.with-pic { grid-template-columns: auto minmax(0, 1fr); }
+  .card.with-pic .acts { grid-column: 1 / -1; }
+}
+.boss-head { display: flex; gap: 16px; align-items: center; }
+.boss-id { display: grid; gap: 4px; min-width: 0; }
+.lb-name { display: inline-flex; align-items: center; gap: 8px; }
+.lb-name .portrait { box-shadow: none; }
+.item-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; margin-right: 8px; vertical-align: middle; border-radius: 6px; background: var(--panel-2); color: var(--muted); }
+.item-icon.loot { color: var(--en); background: rgba(255, 210, 63, .12); }
+
+.scene-banner { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); height: 150px; background: var(--panel-2); }
+.scene-banner canvas.scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.scene-title { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 16px 12px; background: linear-gradient(transparent, rgba(10, 6, 18, .85)); display: grid; gap: 2px; }
+.scene-title .label { color: rgba(239, 232, 255, .75); }
+.hero-scene { height: clamp(150px, 30vw, 220px); display: grid; align-items: end; }
+.hero-scene h1 { position: relative; padding: 16px; text-shadow: 0 3px 0 rgba(0,0,0,.5); }
+.preview-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- Motion ---------- */
+.fx-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 30; }
+.float-text { position: fixed; z-index: 31; pointer-events: none; transform: translate(-50%, 0); font-family: var(--f-display); font-size: 1.15rem; white-space: nowrap; text-shadow: 0 2px 0 rgba(0,0,0,.6); animation: float-up 1.4s ease-out both; }
+.f-cash { color: var(--accent); } .f-xp { color: var(--plot); } .f-loss { color: var(--bad); } .f-hit { color: var(--en); font-size: 1.6rem; }
+@keyframes float-up { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.7); } 15% { opacity: 1; transform: translate(-50%, -10px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1); } }
+
+.shake { animation: shake .45s cubic-bezier(.36, .07, .19, .97); }
+@keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
+
+.fx-banner { position: fixed; inset: 0; z-index: 29; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle at 50% 42%, rgba(196, 107, 255, .28), transparent 60%); animation: fade-out 2.2s ease-in both; }
+.fx-banner.hero { background: radial-gradient(circle at 50% 42%, rgba(255, 210, 63, .28), transparent 60%); }
+.fx-banner-in { display: grid; gap: 6px; justify-items: center; text-align: center; padding-inline: 16px; animation: slam .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.fx-banner b { font-family: var(--f-display); font-weight: 400; font-size: clamp(2.4rem, 10vw, 5rem); line-height: 1; color: var(--ink); text-shadow: 0 4px 0 var(--plot), 0 8px 30px rgba(0,0,0,.6); }
+.fx-banner.hero b { text-shadow: 0 4px 0 var(--accent), 0 8px 30px rgba(0,0,0,.6); }
+.fx-banner span { color: var(--ink); font-size: 1.1rem; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+@keyframes slam { from { transform: scale(2.2) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fade-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+#main.enter .card, #main.enter .boss, #main.enter .panel, #main.enter .stat-strip, #main.enter .scene-banner { animation: rise .4s ease-out both; }
+#main.enter .list > :nth-child(2) { animation-delay: .05s; } #main.enter .list > :nth-child(3) { animation-delay: .1s; }
+#main.enter .list > :nth-child(4) { animation-delay: .15s; } #main.enter .list > :nth-child(n+5) { animation-delay: .2s; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.money .cash { transition: color .3s; }
+.money .cash.up { color: var(--good); } .money .cash.down { color: var(--bad); }
+.preview-portrait.pop { animation: pop-in .35s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes pop-in { from { transform: scale(.8) rotate(-4deg); } to { transform: none; } }
+.hero-portrait:not(.silhouette) { animation: breathe 3.2s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: translateY(-2px) scale(1.02); } }
+.btn:not(:disabled):active { transform: translateY(1px) scale(.98); }
+.btn { transition: transform .08s, filter .15s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .float-text { animation: fade-out 1.4s both; transform: translate(-50%, -20px); }
+  .shake, #main.enter *, .fx-banner-in, .preview-portrait.pop, .hero-portrait, .btn:active { animation: none !important; transform: none !important; }
+}
+
+/* ---------- Illustrations ---------- */
+.scene-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 60% 50%; animation: drift 60s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: scale(1.04) translate(0, 0); } to { transform: scale(1.14) translate(-2.5%, -1.5%); } }
+.scene-banner { height: clamp(150px, 24vw, 210px); }
+.hero-scene { height: clamp(170px, 34vw, 280px); }
+.hero-scene h1 { z-index: 1; }
+.hero-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 40%, rgba(10, 6, 18, .75)); pointer-events: none; }
+.scene-title { z-index: 1; }
+img.hero-portrait { width: 112px; height: 112px; object-fit: cover; flex: none; background: var(--panel-2); }
+.arch { grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 12px; }
+.arch-img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; box-shadow: 0 0 0 2px var(--line); transition: transform .2s; }
+.arch[aria-pressed="true"] .arch-img { box-shadow: 0 0 0 2px var(--accent); transform: scale(1.05) rotate(-2deg); }
+.arch-text { display: grid; gap: 6px; min-width: 0; }
+@media (max-width: 520px) { img.hero-portrait { width: 84px; height: 84px; } }
+@media (prefers-reduced-motion: reduce) { .scene-img, .arch-img { animation: none; transform: none; } }

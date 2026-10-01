@@ -14,9 +14,19 @@ Every villain in the game is another player.
 - **Vault**: cash on hand can be stolen; banked cash can't (deposits cost a fee).
 - **Underworld**: leaderboard, most-wanted list and a live wire of what everyone is doing.
 
+## Art
+
+- `img/`: district backdrops, title art, hero and style portraits, generated with FLUX.1-dev
+  and compressed to WebP (about 560 KB in total).
+- Player portraits are drawn in the browser by `art.js`, seeded from each villain's name,
+  so every player has a unique face that everyone else sees too.
+- `art.js` also animates the scenes (rain, searchlights, stars, embers) and plays the game's
+  effects: floating cash and XP, screen shake, level-up and hero-kill bursts. All motion is
+  turned off when the system asks for reduced motion.
+
 ## How it's built
 
-- `index.html`, `styles.css`, `app.js`: a static site with no build step. Deploys as-is to Vercel.
+- `index.html`, `styles.css`, `app.js`, `art.js`: a static site with no build step. Deploys as-is to Vercel.
 - `supabase/migrations/`: the whole game server, written in Postgres.
   - All game data lives in a private `villain` schema that the Supabase Data API does not expose.
   - The client can only call the `public.vs_*` functions. Each one checks the player's session
