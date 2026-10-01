@@ -79,6 +79,7 @@ function playEffects(before, res, btn) {
   if (dCash && !(dBank && Math.abs(dCash) >= Math.abs(dBank))) floats.push([(dCash > 0 ? '+' : '−') + usd(Math.abs(dCash)), dCash > 0 ? 'f-cash' : 'f-loss']);
   if (dBank > 0) floats.push(['+' + usd(dBank) + ' banked', 'f-cash']);
   if (dXp > 0) floats.push(['+' + dXp + ' XP', 'f-xp']);
+  if (dXp < 0) floats.push(['−' + Math.abs(dXp) + ' XP', 'f-loss']);
   if (dHp < 0) floats.push(['−' + Math.abs(dHp) + ' HP', 'f-loss']);
   const dealt = res && res.msg && /^You hit .+? for ([\d,]+)\./.exec(res.msg);
   if (dealt) floats.unshift(['−' + dealt[1], 'f-hit']);
@@ -347,7 +348,7 @@ function bountyAlert() {
   const hp = cur('hp');
   return `<div class="bounty-alert" role="status">
     <img src="img/wanted.webp" alt="" class="wanted-img" onerror="this.remove()">
-    <p><b>${usd(S.bounty)} bounty on your head.</b> Anyone who knocks you below 20 health collects it.<span class="more"> Higher health means attackers need more hits, and each one can hit you only 5 times an hour. Bank your cash so they can't take that too.</span></p>
+    <p><b>${usd(S.bounty)} bounty on your head.</b> Anyone who knocks you below 20 health collects it.<span class="more"> Higher health means attackers need more hits, and strong defense makes them pay: every attack that fails costs them XP and gives it to you. Bank your cash so they can't take that too.</span></p>
     <div class="alert-acts">${hp < S.max_hp ? healButton('btn') : '<span class="vsub">Health full</span>'}${S.cash > 0 ? '<button class="btn ghost" data-act="tab" data-arg="vault">Bank cash</button>' : ''}</div>
   </div>`;
 }
@@ -449,15 +450,14 @@ function viewFights() {
           const th = threat(+t.ratio);
           const protectedT = t.level < 3;
           const down = t.hp_now < 20;
-          const capped = t.hits >= 5;
-          const reason = S.level < 3 ? 'Lv 3 to attack' : protectedT ? 'Newcomer' : down ? 'Recovering' : capped ? 'Hit limit' : fightLabel;
-          const disabled = S.level < 3 || protectedT || down || capped || !canFight;
+          const reason = S.level < 3 ? 'Lv 3 to attack' : protectedT ? 'Newcomer' : down ? 'Recovering' : fightLabel;
+          const disabled = S.level < 3 || protectedT || down || !canFight;
           const minBounty = 500 * t.level;
           return `<div class="card with-pic">
             ${Art.portraitTag(t.name, { size: 52, arch: t.arch })}
             <div>
               <div class="title"><span class="${t.online ? 'online' : 'offline'}" title="${t.online ? 'Online now' : 'Offline'}"></span>${esc(t.name)} <span class="threat ${th[0]}">${th[1]}</span> ${t.bounty > 0 ? `<span class="bounty-chip">${short(t.bounty)} bounty</span>` : ''}</div>
-              <div class="meta"><span>Lv <b class="num">${t.level}</b></span><span>${esc(CAT.archs[t.arch].name)}</span><span>Crew <b class="num">${t.crew}</b></span><span>Health <b class="num">${t.hp_now}/${t.max_hp}</b></span><span>Hits this hour <b class="num">${t.hits}/5</b></span></div>
+              <div class="meta"><span>Lv <b class="num">${t.level}</b></span><span>${esc(CAT.archs[t.arch].name)}</span><span>Crew <b class="num">${t.crew}</b></span><span>Health <b class="num">${t.hp_now}/${t.max_hp}</b></span></div>
             </div>
             <div class="acts">
               <button class="btn" data-act="attack" data-arg="${t.id}" ${disabled ? 'disabled' : ''}>${reason === fightLabel ? 'Attack' : reason}</button>
@@ -476,7 +476,7 @@ function viewFights() {
   return `
   <div class="row-head">
     <div><h2 class="h2">Fights</h2>
-    <p class="intro-line">Each fight costs 1 stamina. Beat a rival villain to take 10% of the cash they carry. Knock them below 20 health to collect any bounty on their head. Your crew carries your best weapon, armor and vehicle for every member.</p></div>
+    <p class="intro-line">Each fight costs 1 stamina, and there's no limit on how often you can attack. Beat a rival villain to take 10% of the cash they carry. Knock them below 20 health to collect any bounty on their head. Attack someone whose defense beats you and you lose XP to them, so pick your targets. Your crew carries your best weapon, armor and vehicle for every member.</p></div>
   </div>
   <div class="stat-strip">
     <div><span>Attack</span><b>${num(S.power.atk)}</b></div>

@@ -6,7 +6,8 @@ Every villain in the game is another player.
 - **Schemes**: spend energy for cash and XP across five districts. Master every scheme
   in a district to take it over and win a loot item.
 - **Fights**: spend stamina to rob other players (from level 3) or street goons. Beating
-  a player takes 10% of the cash they carry.
+  a player takes 10% of the cash they carry. There's no limit on attacks, but an attack that
+  fails against a stronger defense costs the attacker XP, which goes to the defender.
 - **Bounties**: put a price on a rival's head. Whoever knocks them below 20 health collects it.
 - **Heroes**: shared world bosses. Every player hits the same health bar, and the bounty
   is split by damage dealt.
@@ -44,6 +45,6 @@ meant to be public: it can only call the `vs_*` functions.
 Serve the folder with any static server, for example `python3 -m http.server`, and open it.
 It talks to the live Supabase project.
 
-To stand up your own backend, apply the three migrations in order to a Supabase project
+To stand up your own backend, apply the migrations in order to a Supabase project
 (`supabase db push`, or paste them into the SQL editor), then change `SUPABASE_URL` and
 `SUPABASE_KEY` in `app.js`.
