@@ -279,3 +279,37 @@ img.hero-portrait { width: 112px; height: 112px; object-fit: cover; flex: none; 
 .arch-text { display: grid; gap: 6px; min-width: 0; }
 @media (max-width: 520px) { img.hero-portrait { width: 84px; height: 84px; } }
 @media (prefers-reduced-motion: reduce) { .scene-img, .arch-img { animation: none; transform: none; } }
+
+/* ---------- Heal and bounty alert ---------- */
+.meter .tm { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 22px; }
+.heal-mini { background: transparent; border: 1px solid var(--hp); color: var(--hp); border-radius: 999px; padding: 1px 8px; font-family: var(--f-body); font-weight: 700; font-size: .72rem; letter-spacing: .02em; white-space: nowrap; }
+.heal-mini:hover:not(:disabled) { background: var(--hp); color: var(--ground); }
+.heal-mini:disabled { border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.bounty-alert { max-width: 1200px; margin: 0 auto; padding: 8px 16px 10px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; border-top: 1px solid var(--line); background: linear-gradient(90deg, rgba(255, 138, 31, .16), transparent 70%); animation: alert-pulse 2.4s ease-in-out infinite; }
+.bounty-alert p { margin: 0; flex: 1 1 320px; min-width: 0; font-size: .92rem; color: var(--muted); }
+.bounty-alert p b { color: var(--accent); }
+.wanted-img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex: none; box-shadow: 0 0 0 2px var(--accent); }
+.alert-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+@keyframes alert-pulse { 50% { background-color: rgba(255, 138, 31, .07); } }
+@media (prefers-reduced-motion: reduce) { .bounty-alert { animation: none; } }
+@media (max-width: 520px) {
+  .bounty-alert { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+  .bounty-alert .more { display: none; }
+  .bounty-alert .wanted-img { width: 34px; height: 34px; }
+  .bounty-alert .alert-acts { grid-column: 1 / -1; }
+}
+
+/* ---------- Item, property and UI art ---------- */
+.thumb { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; background: var(--panel-2); box-shadow: 0 0 0 1px var(--line); transition: transform .2s; }
+.thumb.wide { width: 88px; }
+.thumb.loot { box-shadow: 0 0 0 2px var(--en), 0 0 14px rgba(255, 210, 63, .25); }
+.card:hover .thumb { transform: scale(1.06) rotate(-1.5deg); }
+.stat-strip .tank { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.tank img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
+.reward { display: flex; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 8px 8px; }
+.reward .thumb { width: 52px; height: 52px; }
+.reward > span { display: grid; }
+.most-wanted { display: flex; align-items: center; gap: 10px; }
+.most-wanted .wanted-img { width: 32px; height: 32px; }
+@media (max-width: 520px) { .thumb { width: 52px; height: 52px; } .thumb.wide { width: 64px; } .stat-strip .tank { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { .card:hover .thumb { transform: none; } }

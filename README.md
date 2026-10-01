@@ -16,8 +16,9 @@ Every villain in the game is another player.
 
 ## Art
 
-- `img/`: district backdrops, title art, hero and style portraits, generated with FLUX.1-dev
-  and compressed to WebP (about 560 KB in total).
+- `img/`: district backdrops, title art, hero and style portraits, art for every item
+  (`img/items/`) and lair property (`img/props/`), the regen tank and the wanted poster.
+  Generated with FLUX.1-dev and compressed to WebP (about 750 KB in total).
 - Player portraits are drawn in the browser by `art.js`, seeded from each villain's name,
   so every player has a unique face that everyone else sees too.
 - `art.js` also animates the scenes (rain, searchlights, stars, embers) and plays the game's

@@ -333,7 +333,23 @@ function meter(label, key) {
   return `<div class="meter">
     <div class="top"><span>${label}</span><span class="val">${num(v)}/${num(max)}</span></div>
     <div class="bar"><i style="width:${clamp(v / max * 100, 0, 100)}%;background:var(--${key === 'en' ? 'en' : key === 'st' ? 'st' : 'hp'})"></i></div>
-    <div class="tm">${v >= max ? 'Full' : '+' + (key === 'hp' ? Math.max(1, Math.round(S.max_hp / 60)) : 1) + ' in ' + mmss(nextIn(key))}</div></div>`;
+    <div class="tm">${v >= max ? 'Full' : '+' + (key === 'hp' ? Math.max(1, Math.round(S.max_hp / 60)) : 1) + ' in ' + mmss(nextIn(key))}${key === 'hp' && v < max ? healButton('heal-mini') : ''}</div></div>`;
+}
+// Regen tank button, shown in the HUD and on the fight tabs. Heals to full instantly for cash.
+function healButton(cls = 'btn ghost') {
+  const hp = cur('hp');
+  if (hp >= S.max_hp) return '';
+  const c = healCost();
+  return `<button class="${cls}" data-act="heal" ${S.cash < c ? `disabled title="You need ${usd(c)} on hand"` : `title="Regen tank: full health now"`}>Heal · ${usd(c)}</button>`;
+}
+function bountyAlert() {
+  if (!(S.bounty > 0)) return '';
+  const hp = cur('hp');
+  return `<div class="bounty-alert" role="status">
+    <img src="img/wanted.webp" alt="" class="wanted-img" onerror="this.remove()">
+    <p><b>${usd(S.bounty)} bounty on your head.</b> Anyone who knocks you below 20 health collects it.<span class="more"> Higher health means attackers need more hits, and each one can hit you only 5 times an hour. Bank your cash so they can't take that too.</span></p>
+    <div class="alert-acts">${hp < S.max_hp ? healButton('btn') : '<span class="vsub">Health full</span>'}${S.cash > 0 ? '<button class="btn ghost" data-act="tab" data-arg="vault">Bank cash</button>' : ''}</div>
+  </div>`;
 }
 
 // Cash in the HUD counts toward its new value instead of jumping.
@@ -368,7 +384,7 @@ function renderHud() {
       <div class="cash" title="Cash on hand">${usd(tweening ? shownCash : S.cash)}</div>
       <div class="bank">Vault ${usd(S.bank)}</div>
     </div>
-  </div>`;
+  </div>${bountyAlert()}`;
   Art.paintPortraits(hud);
   if (tweening) animateCash(); else shownCash = S.cash;
 }
@@ -398,7 +414,8 @@ function viewSchemes() {
   return `
   <div class="scene-banner">${Art.sceneTag(d.id)}<div class="scene-title"><span class="label">District · Lv ${d.lvl}+</span><h2 class="h2">${esc(d.name)}</h2></div></div>
   <div class="row-head"><div>
-    <p class="intro-line">Schemes cost energy and pay cash and XP. Run each one 10 times to master it. Master all four to take the district and claim its ${esc(CAT.items[d.reward].name)}.</p></div></div>
+    <p class="intro-line">Schemes cost energy and pay cash and XP. Run each one 10 times to master it. Master all four to take the district and claim its ${esc(CAT.items[d.reward].name)}.</p></div>
+    <div class="reward"><img class="thumb loot" src="img/items/${d.reward}.webp" alt="" loading="lazy"><span><span class="label">District reward</span><b>${esc(CAT.items[d.reward].name)}</b></span></div></div>
   <div class="chips">${CAT.districts.map(x => `<button class="chip" data-act="district" data-arg="${x.id}" aria-pressed="${x.id === d.id}" ${S.level < x.lvl ? 'disabled' : ''}>${esc(x.name)}${S.level < x.lvl ? ` · Lv ${x.lvl}` : S.districts.includes(x.id) ? ' ✓' : ''}</button>`).join('')}</div>
   <div class="mast ${owns ? 'done' : ''}">District control <div class="bar"><i style="width:${done / schemes.length * 100}%"></i></div> <span class="num">${done}/${schemes.length}</span></div>
   <div class="list">${schemes.map(s => {
@@ -421,7 +438,6 @@ function threat(ratio) {
 }
 
 function viewFights() {
-  const hc = healCost();
   const st = cur('st'), hp = cur('hp');
   const canFight = st >= 1 && hp >= 20;
   const fightLabel = hp < 20 ? 'Too hurt' : st < 1 ? 'No stamina' : 'Fight';
@@ -449,6 +465,7 @@ function viewFights() {
             </div>
             ${ui.bountyFor === t.id ? `
             <form class="inline-form" data-form="bounty">
+              <img class="wanted-img" src="img/wanted.webp" alt="" loading="lazy">
               <label class="label" for="bounty-amt">Bounty on ${esc(t.name)}</label>
               <input class="text-in" id="bounty-amt" name="amount" type="number" min="${minBounty}" step="1" value="${minBounty}" required>
               <button class="btn" type="submit">Post bounty</button>
@@ -466,7 +483,7 @@ function viewFights() {
     <div><span>Defense</span><b>${num(S.power.def)}</b></div>
     <div><span>Crew</span><b>${S.crew}</b></div>
     <div><span>Rivals beaten</span><b>${S.stats.pvp_wins}–${S.stats.pvp_losses}</b></div>
-    <div style="margin-left:auto;align-self:center"><button class="btn ghost" data-act="heal" ${hp >= S.max_hp || S.cash < hc ? 'disabled' : ''}>Regen tank${hp < S.max_hp ? ' · ' + usd(hc) : ''}</button></div>
+    <div class="tank"><img src="img/regen-tank.webp" alt="" loading="lazy"><div>${healButton() || '<span class="vsub">Health full</span>'}</div></div>
   </div>
   <div class="row-head"><h3 class="section-title">Rival villains</h3><button class="btn ghost" data-act="scoutRivals">Refresh</button></div>
   ${S.level < 3 ? '<p class="notice">You can attack other players from level 3. Until then, fight street goons below. Players under level 3 can’t be attacked either.</p>' : ''}
@@ -484,14 +501,13 @@ function viewFights() {
 }
 
 function viewHeroes() {
-  const hc = healCost();
   const st = cur('st'), hp = cur('hp');
   const live = Object.fromEntries(((world && world.heroes) || []).map(h => [h.id, h]));
   return `
   <div class="row-head">
     <div><h2 class="h2">Heroes on patrol</h2>
     <p class="intro-line">Heroes are shared by every villain in the game. Everyone hits the same health bar, and when a hero falls the bounty is split by how much damage each villain dealt. The final blow and the top damage dealer each take the hero's gear. Each defeat brings them back stronger.</p></div>
-    <button class="btn ghost" data-act="heal" ${hp >= S.max_hp || S.cash < hc ? 'disabled' : ''}>Regen tank${hp < S.max_hp ? ' · ' + usd(hc) : ''}</button>
+    ${healButton()}
   </div>
   <div class="list">${CAT.heroes.map(H => {
     const h = live[H.id] || { hp: H.base_hp, max_hp: H.base_hp, defeats: 0, top: [], fighters: 0 };
@@ -522,9 +538,10 @@ function viewArsenal() {
   <div class="chips">${Object.entries(names).map(([k, n]) => `<button class="chip" data-act="armory" data-arg="${k}" aria-pressed="${ui.armory === k}">${n}</button>`).join('')}</div>
   <div class="list">${list.map(it => {
     const locked = it.price && S.level < it.lvl;
-    return `<div class="card ${locked ? 'locked' : ''}">
+    return `<div class="card with-pic ${locked ? 'locked' : ''}">
+      <img class="thumb ${!it.price ? 'loot' : ''}" src="img/items/${it.id}.webp" alt="" loading="lazy">
       <div>
-        <div class="title">${Art.itemIcon(it.type, !it.price)}${esc(it.name)}${!it.price ? ' <span class="threat even">Loot</span>' : ''}</div>
+        <div class="title">${esc(it.name)}${!it.price ? ' <span class="threat even">Loot</span>' : ''}</div>
         <div class="meta"><span>ATK <b class="num">${it.atk}</b></span><span>DEF <b class="num">${it.def}</b></span><span>Owned <b class="num">${owned(it.id)}</b></span>${it.price ? `<span>${locked ? 'Unlocks at Lv ' + it.lvl : 'Price <b class="num">' + usd(it.price) + '</b>'}</span>` : ''}</div>
       </div>
       <div class="acts">${it.price ? `
@@ -566,7 +583,8 @@ function viewLair() {
   </div>
   <div class="list">${CAT.props.map(p => {
     const locked = S.level < p.lvl, cost = propCost(p);
-    return `<div class="card ${locked ? 'locked' : ''}">
+    return `<div class="card with-pic ${locked ? 'locked' : ''}">
+      <img class="thumb wide" src="img/props/${p.id}.webp" alt="" loading="lazy">
       <div><div class="title">${esc(p.name)}</div>
       <div class="meta"><span>Owned <b class="num">${(S.props && S.props[p.id]) || 0}</b></span><span>Pays <b class="num">${usd(p.income)}</b>/min each</span><span>${locked ? 'Unlocks at Lv ' + p.lvl : 'Next costs <b class="num">' + usd(cost) + '</b>'}</span></div></div>
       <div class="acts"><button class="btn" data-act="prop" data-arg="${p.id}" ${locked || S.cash < cost ? 'disabled' : ''}>Buy</button></div>
@@ -603,7 +621,7 @@ function viewUnderworld() {
   <p class="intro-line"><span class="num">${num(world.players)}</span> villains in the syndicate, <span class="num">${num(world.online)}</span> online now.</p></div></div>
   <div class="two-col">
     <section>
-      <h3 class="section-title">Most wanted</h3>
+      <h3 class="section-title most-wanted"><img class="wanted-img" src="img/wanted.webp" alt="" loading="lazy">Most wanted</h3>
       ${world.hitlist.length ? `<div class="table-wrap"><table class="board-table">
         <thead><tr><th>Villain</th><th class="num">Lv</th><th class="num">Bounty</th></tr></thead>
         <tbody>${world.hitlist.map(h => `<tr class="${h.id === S.id ? 'me' : ''}"><td>${esc(h.name)}</td><td class="num">${h.level}</td><td class="num">${usd(h.amount)}</td></tr>`).join('')}</tbody>
@@ -712,7 +730,7 @@ function enterGame() {
   loops = [
     // redraw meters every second; redraw the tab when a meter ticks so buttons enable on time
     setInterval(() => {
-      if (!S) return;
+      if (!S || pointerHeld) return;
       renderHud();
       const sig = [cur('en'), cur('st'), cur('hp')].join(',');
       if (sig !== lastMeters) { lastMeters = sig; if (!busy) renderMain(); }
@@ -727,6 +745,9 @@ function enterGame() {
   ];
 }
 
+let pointerHeld = false;
+document.addEventListener('pointerdown', () => { pointerHeld = true; });
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { setTimeout(() => { pointerHeld = false; }, 50); }));
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
   if (!b || b.disabled) return;
